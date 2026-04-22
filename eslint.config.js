@@ -12,6 +12,9 @@ export default defineConfig([
       // força uso de ponto e vírgula
       semi: ["error", "always"],
       // força espaçamento consistente
+      "env": {
+        node: true
+      },
       "space-before-function-paren": ["error", "never"],
       "keyword-spacing": ["error", { before: true, after: true }],
       "space-infix-ops": "error",
