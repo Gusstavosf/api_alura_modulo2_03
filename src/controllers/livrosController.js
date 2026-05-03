@@ -1,15 +1,17 @@
 import {autores, livros} from "../models/index.js";
 import NaoEncontrado from "../erros/NaoEncontrado.js";
+import RequisicaoIncorreta from "../erros/RequisicaoIncorreta.js"
 
 class LivroController {
 
   static listarLivros = async(req, res, next) => {
     try {
-      const livrosResultado = await livros.find()
-        .populate("autor")
-        .exec();
+      const livrosResultado = await livros.find();
 
-      res.status(200).json(livrosResultado);
+      req.resultado = buscaLivros;
+
+      next();
+
     } catch (erro) {
       next(erro)
     }
@@ -19,9 +21,7 @@ class LivroController {
     try {
       const id = req.params.id;
 
-      const livroResultados = await livros.findById(id)
-        .populate("autor", "nome")
-        .exec();
+      const livroResultado = await livros.findById(id);
 
       if (livroResultados !== null) {
           res.status(200).send(livroResultados);
@@ -79,22 +79,32 @@ class LivroController {
 
   static listarLivroPorFiltro = async(req, res, next) => {
     try {
-      const busca = processaBusca(req.query)
+      const busca = await processaBusca(req.query)
 
-      const livrosResultado = await livros.find(busca);
+      if(busca !==null){
+        const livroResultado = await livros
+          .findById(id, {}, { autopopulate: false })
+          .populate("autor");  // removemos o segundo parâmetro "nome", e agora essa população mostra todas as informações do autor
 
-      res.status(200).send(livrosResultado);
+        req.resultado = livrosResultado;
+
+        next()
+
+        res.status(200).send(livrosResultado);
+      } else{
+        res.status(200).send([])
+      }  
     } catch (erro) {
       next(erro)
     }
   };
 }
 
-function processaBusca(parametros){
+async function processaBusca(parametros){
 
     const {editora, titulo, minPaginas, maxPaginas, nomeAutor} = parametros
 
-      const busca = {} 
+      let busca = {} 
 
       if(editora) busca.editora = editora;
       if(titulo) busca.titulo = { $regex: titulo, $options: "i" }
@@ -105,11 +115,13 @@ function processaBusca(parametros){
       if(maxPaginas) busca.numeroPagina.$lte = maxPaginas;
 
       if(nomeAutor){
-        const autor = autores.findOne({nome: nomeAutor})
+        const autor = await autores.findOne({nome: nomeAutor})
 
-        const autorId = autor._id;
-
-        busca.autor = autorId
+        if (autor !== null){
+          busca.autor = autor._id
+        } else{
+          busca = null
+        }
       }
     
     return busca
